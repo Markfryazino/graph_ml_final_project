@@ -1,0 +1,4 @@
+.ipynb_checkpoints/
+.VSCodeCounter/
+notebooks
+__pycache__/
