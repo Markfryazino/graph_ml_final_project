@@ -2,6 +2,8 @@ import json
 import pandas as pd
 import numpy as np
 import networkx as nx
+import bcubed
+
 from tqdm.auto import tqdm, trange
 
 
@@ -21,11 +23,15 @@ def encode_persons(data):
     return data2, persons, mapping
 
 
-def build_graph_from_pandas(data, weighted=False):
+def build_graph_from_pandas(data, weighted=False, all_people=None):
     agg = data.groupby(["person1", "person2"])["timestep"].count().reset_index()
     agg = agg.rename(columns={"timestep": "sum"})
     G = nx.Graph()
     
+    if all_people is not None:
+        for person in all_people:
+            G.add_node(person)
+
     for i, row in agg.iterrows():
         if weighted:
             G.add_edge(row["person1"], row["person2"], weight=row['sum'])
@@ -38,7 +44,7 @@ def build_graph_from_pandas(data, weighted=False):
 def extract_relevant_data(data, start, end):
     start_dt = pd.to_datetime(start) if type(start) == str else start
     end_dt = pd.to_datetime(end) if type(end) == str else end
-    return data[(data["time"] >= start) & (data["time"] <= end)]
+    return data[(data["time"] >= start_dt) & (data["time"] <= end_dt)]
 
 
 def plot_graph(G, plot_single_nodes=False, **kwargs):
@@ -98,3 +104,12 @@ def graph_features(G):
         features["average_distance"] = nx.average_shortest_path_length(G)
 
     return features
+
+
+def bcubed_score(y_true, y_predicted):
+    ldict = {key: {val} for key, val in y_true.items()}
+    cdict = {key: {val} for key, val in y_predicted.items()}
+    precision = bcubed.precision(cdict, ldict)
+    recall = bcubed.recall(cdict, ldict)
+    fscore = bcubed.fscore(precision, recall)
+    return precision, recall, fscore
